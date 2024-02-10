@@ -1,5 +1,11 @@
 package pool
 
 type ServerPool struct {
-	backends []Backend
+	Backends []*Backend
+}
+
+func (sp *ServerPool) CheckHealth() {
+	for _, b := range sp.Backends {
+		b.CheckHealth()
+	}
 }
