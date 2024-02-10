@@ -7,10 +7,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
 
 type Backend struct {
+	ID           string
+	Metadata     interface{}
 	URL          *url.URL
 	alive        bool
 	mutex        sync.RWMutex
@@ -43,9 +46,11 @@ func (b *Backend) CheckHealth() {
 	b.SetAlive(true)
 }
 
-func NewBackend(URL *url.URL) *Backend {
+func NewBackend(URL *url.URL, meta interface{}) *Backend {
 	rp := httputil.NewSingleHostReverseProxy(URL)
 	return &Backend{
+		ID:           uuid.NewString(),
+		Metadata:     meta,
 		URL:          URL,
 		ReverseProxy: rp,
 		alive:        true,

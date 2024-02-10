@@ -3,8 +3,10 @@ package main
 import (
 	"net/url"
 	"os"
+	"sync"
 	"time"
 
+	"github.com/ShardulNalegave/freighter/api"
 	"github.com/ShardulNalegave/freighter/balancer"
 	"github.com/ShardulNalegave/freighter/pool"
 	"github.com/ShardulNalegave/freighter/strategy"
@@ -19,7 +21,7 @@ func main() {
 	u1, _ := url.Parse("http://localhost:8080")
 	p := &pool.ServerPool{
 		Backends: []*pool.Backend{
-			pool.NewBackend(u1),
+			pool.NewBackend(u1, nil),
 		},
 	}
 
@@ -28,15 +30,21 @@ func main() {
 			Host: ":5000",
 		},
 		Pool:     p,
-		Done:     make(chan int),
 		Strategy: &strategy.RoundRobin{},
 	}
 
-	log.Info().Str("URL", b.URL.Host).Msg("Listening...")
-	go b.ListenAndServe()
+	a := api.NewAPI(&url.URL{
+		Host: ":5001",
+	}, b)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go a.ListenAndServe(&wg)
+	go b.ListenAndServe(&wg)
 	go healthCheck(p)
 
-	<-b.Done
+	wg.Wait()
 }
 
 func healthCheck(p *pool.ServerPool) {
