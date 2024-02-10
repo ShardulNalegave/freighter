@@ -1,13 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"sync"
 	"time"
 
-	"github.com/ShardulNalegave/freighter/api"
 	"github.com/ShardulNalegave/freighter/balancer"
+	"github.com/ShardulNalegave/freighter/compose"
 	"github.com/ShardulNalegave/freighter/pool"
 	"github.com/ShardulNalegave/freighter/strategy"
 	"github.com/rs/zerolog"
@@ -17,6 +18,21 @@ import (
 func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+
+	source := `
+
+	; djnghg
+
+	`
+
+	l := compose.NewLexer(source)
+	toks, err := l.ScanTokens()
+	if err != nil {
+		log.Error().Msg(err.Error())
+	}
+	for _, tok := range toks {
+		fmt.Println(tok)
+	}
 
 	u1, _ := url.Parse("http://localhost:8080")
 	p := &pool.ServerPool{
@@ -33,14 +49,9 @@ func main() {
 		Strategy: &strategy.RoundRobin{},
 	}
 
-	a := api.NewAPI(&url.URL{
-		Host: ":5001",
-	}, b)
-
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(1)
 
-	go a.ListenAndServe(&wg)
 	go b.ListenAndServe(&wg)
 	go healthCheck(p)
 
