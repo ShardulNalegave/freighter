@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Backend struct {
@@ -32,10 +34,21 @@ func (b *Backend) CheckHealth() {
 	timeout := 2 * time.Second
 	conn, err := net.DialTimeout("tcp", b.URL.Host, timeout)
 	if err != nil {
+		log.Error().Str("URL", b.URL.Host).Msg("Backend not responding")
 		b.SetAlive(false)
 		return
 	}
 
 	_ = conn.Close()
 	b.SetAlive(true)
+}
+
+func NewBackend(URL *url.URL) *Backend {
+	rp := httputil.NewSingleHostReverseProxy(URL)
+	return &Backend{
+		URL:          URL,
+		ReverseProxy: rp,
+		alive:        true,
+		mutex:        sync.RWMutex{},
+	}
 }

@@ -16,8 +16,11 @@ func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 
+	u1, _ := url.Parse("http://localhost:8080")
 	p := &pool.ServerPool{
-		Backends: make([]*pool.Backend, 0),
+		Backends: []*pool.Backend{
+			pool.NewBackend(u1),
+		},
 	}
 
 	b := &balancer.Balancer{
@@ -25,19 +28,21 @@ func main() {
 			Host: ":5000",
 		},
 		Pool:     p,
-		Done:     make(chan bool),
+		Done:     make(chan int),
 		Strategy: &strategy.RoundRobin{},
 	}
 
-	b.ListenAndServe()
+	log.Info().Str("URL", b.URL.Host).Msg("Listening...")
+	go b.ListenAndServe()
 	go healthCheck(p)
 
 	<-b.Done
 }
 
 func healthCheck(p *pool.ServerPool) {
-	t := time.NewTicker(20 * time.Second)
+	t := time.NewTicker(5 * time.Second)
 	for range t.C {
+		log.Info().Msg("Running periodic Health-Check")
 		p.CheckHealth()
 	}
 }

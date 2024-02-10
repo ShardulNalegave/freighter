@@ -12,7 +12,7 @@ type Balancer struct {
 	URL      *url.URL
 	Pool     *pool.ServerPool
 	Strategy strategy.Strategy
-	Done     chan bool
+	Done     chan int
 }
 
 func (b *Balancer) Handle(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +20,6 @@ func (b *Balancer) Handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Balancer) ListenAndServe() {
-	go http.ListenAndServe(b.URL.Host, http.HandlerFunc(b.Handle))
-	b.Done <- true
+	http.ListenAndServe(b.URL.Host, http.HandlerFunc(b.Handle))
+	b.Done <- 0
 }
