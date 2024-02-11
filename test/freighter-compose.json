@@ -1,0 +1,11 @@
+{
+	"address": ":5000",
+	"backends": [
+		{
+			"address": "http://localhost:8080",
+			"metadata": {
+				"max_reqs": 100
+			}
+		}
+	]
+}

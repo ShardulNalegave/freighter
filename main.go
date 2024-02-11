@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
 	"net/url"
 	"os"
 	"sync"
@@ -19,31 +19,27 @@ func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 
-	source := `
-
-	; djnghg
-
-	`
-
-	l := compose.NewLexer(source)
-	toks, err := l.ScanTokens()
+	confFileName := os.Args[1]
+	conf, _ := os.ReadFile(confFileName)
+	var c compose.ComposeConfig
+	err := json.Unmarshal([]byte(conf), &c)
 	if err != nil {
-		log.Error().Msg(err.Error())
-	}
-	for _, tok := range toks {
-		fmt.Println(tok)
+		log.Fatal().AnErr("Error", err)
 	}
 
-	u1, _ := url.Parse("http://localhost:8080")
+	backends := make([]*pool.Backend, 0)
+	for _, rec := range c.Backends {
+		u, _ := url.Parse(rec.Address)
+		backends = append(backends, pool.NewBackend(u, rec.Metadata))
+	}
+
 	p := &pool.ServerPool{
-		Backends: []*pool.Backend{
-			pool.NewBackend(u1, nil),
-		},
+		Backends: backends,
 	}
 
 	b := &balancer.Balancer{
 		URL: &url.URL{
-			Host: ":5000",
+			Host: c.Address,
 		},
 		Pool:     p,
 		Strategy: &strategy.RoundRobin{},

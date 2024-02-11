@@ -13,7 +13,7 @@ import (
 
 type Backend struct {
 	ID           string
-	Metadata     interface{}
+	Metadata     map[string]interface{}
 	URL          *url.URL
 	alive        bool
 	mutex        sync.RWMutex
@@ -50,7 +50,7 @@ func NewBackend(URL *url.URL, meta interface{}) *Backend {
 	rp := httputil.NewSingleHostReverseProxy(URL)
 	return &Backend{
 		ID:           uuid.NewString(),
-		Metadata:     meta,
+		Metadata:     make(map[string]interface{}),
 		URL:          URL,
 		ReverseProxy: rp,
 		alive:        true,
