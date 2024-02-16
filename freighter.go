@@ -11,8 +11,8 @@ import (
 
 type Config struct {
 	URL      *url.URL
-	Backends []*pool.Backend
 	Strategy strategy.Strategy
+	Backends []*pool.Backend
 }
 
 type Freighter struct {
