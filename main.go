@@ -1,63 +1,46 @@
-package main
+package freighter
 
 import (
-	"encoding/json"
 	"net/url"
-	"os"
 	"sync"
-	"time"
 
 	"github.com/ShardulNalegave/freighter/balancer"
-	"github.com/ShardulNalegave/freighter/compose"
 	"github.com/ShardulNalegave/freighter/pool"
 	"github.com/ShardulNalegave/freighter/strategy"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
-func main() {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+type Config struct {
+	URL      *url.URL
+	Backends []*pool.Backend
+	Strategy strategy.Strategy
+}
 
-	confFileName := os.Args[1]
-	conf, _ := os.ReadFile(confFileName)
-	var c compose.ComposeConfig
-	err := json.Unmarshal([]byte(conf), &c)
-	if err != nil {
-		log.Fatal().AnErr("Error", err)
-	}
+type Freighter struct {
+	p *pool.ServerPool
+	b *balancer.Balancer
+}
 
-	backends := make([]*pool.Backend, 0)
-	for _, rec := range c.Backends {
-		u, _ := url.Parse(rec.Address)
-		backends = append(backends, pool.NewBackend(u, rec.Metadata))
-	}
-
-	p := &pool.ServerPool{
-		Backends: backends,
-	}
-
-	b := &balancer.Balancer{
-		URL: &url.URL{
-			Host: c.Address,
-		},
-		Pool:     p,
-		Strategy: &strategy.RoundRobin{},
-	}
-
+func (f *Freighter) ListenAndServe() {
 	var wg sync.WaitGroup
 	wg.Add(1)
-
-	go b.ListenAndServe(&wg)
-	go healthCheck(p)
-
+	go f.b.ListenAndServe(&wg)
+	go HealthCheck(f.p)
 	wg.Wait()
 }
 
-func healthCheck(p *pool.ServerPool) {
-	t := time.NewTicker(5 * time.Second)
-	for range t.C {
-		log.Info().Msg("Running periodic Health-Check")
-		p.CheckHealth()
+func NewFreighter(c *Config) *Freighter {
+	p := &pool.ServerPool{
+		Backends: c.Backends,
+	}
+
+	b := &balancer.Balancer{
+		URL:      c.URL,
+		Pool:     p,
+		Strategy: c.Strategy,
+	}
+
+	return &Freighter{
+		p: p,
+		b: b,
 	}
 }
