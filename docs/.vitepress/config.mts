@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
+  base: '/freighter/',
   title: "Freighter",
   description: "A simple but extensible and unopinionated load-balancer written in Go-lang.",
   themeConfig: {
