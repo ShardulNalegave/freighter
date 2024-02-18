@@ -7,5 +7,5 @@ import (
 )
 
 type Strategy interface {
-	Handle(w http.ResponseWriter, r *http.Request, p *pool.ServerPool)
+	Handle(r *http.Request, p *pool.ServerPool) *pool.Backend
 }

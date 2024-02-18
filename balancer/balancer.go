@@ -17,7 +17,9 @@ type Balancer struct {
 }
 
 func (b *Balancer) Handle(w http.ResponseWriter, r *http.Request) {
-	b.Strategy.Handle(w, r, b.Pool)
+	if srv := b.Strategy.Handle(r, b.Pool); srv != nil {
+		srv.ReverseProxy.ServeHTTP(w, r)
+	}
 }
 
 func (b *Balancer) ListenAndServe(wg *sync.WaitGroup) {
