@@ -8,18 +8,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
 )
 
+// Backend is representation of an actual running backend.
 type Backend struct {
 	ID           string
-	Metadata     map[string]interface{}
+	Metadata     interface{} // Metadata to be set by user
 	URL          *url.URL
 	alive        bool
 	mutex        sync.RWMutex
 	ReverseProxy *httputil.ReverseProxy
 }
 
+// Returns the alive status of backend
 func (b *Backend) IsAlive() bool {
 	b.mutex.RLock()
 	alive := b.alive
@@ -27,17 +28,18 @@ func (b *Backend) IsAlive() bool {
 	return alive
 }
 
+// Sets the alive status of backend
 func (b *Backend) SetAlive(alive bool) {
 	b.mutex.Lock()
 	b.alive = alive
 	b.mutex.Unlock()
 }
 
+// Checks backend health and update alive status accordingly
 func (b *Backend) CheckHealth() {
 	timeout := 2 * time.Second
 	conn, err := net.DialTimeout("tcp", b.URL.Host, timeout)
 	if err != nil {
-		log.Error().Str("URL", b.URL.Host).Msg("Backend not responding")
 		b.SetAlive(false)
 		return
 	}
@@ -46,11 +48,12 @@ func (b *Backend) CheckHealth() {
 	b.SetAlive(true)
 }
 
+// Constructs a new backend instance
 func NewBackend(URL *url.URL, meta interface{}) *Backend {
 	rp := httputil.NewSingleHostReverseProxy(URL)
 	return &Backend{
 		ID:           uuid.NewString(),
-		Metadata:     make(map[string]interface{}),
+		Metadata:     meta,
 		URL:          URL,
 		ReverseProxy: rp,
 		alive:        true,

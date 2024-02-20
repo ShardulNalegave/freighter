@@ -23,6 +23,7 @@ func (rr *RoundRobin) Handle(r *http.Request, p *pool.ServerPool) *pool.Backend 
 			return p.Backends[index]
 		}
 	}
+
 	return nil
 }
 

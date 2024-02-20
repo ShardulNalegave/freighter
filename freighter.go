@@ -1,11 +1,11 @@
 package freighter
 
 import (
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
 
-	"github.com/ShardulNalegave/freighter/balancer"
 	"github.com/ShardulNalegave/freighter/pool"
 	"github.com/ShardulNalegave/freighter/strategy"
 )
@@ -18,33 +18,35 @@ type Options struct {
 }
 
 type Freighter struct {
-	p                   *pool.ServerPool
-	b                   *balancer.Balancer
+	URL                 *url.URL
+	pl                  *pool.ServerPool
+	Strategy            strategy.Strategy
 	healthCheckInterval time.Duration
 }
 
-func (f *Freighter) ListenAndServe() {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go f.b.ListenAndServe(&wg)
-	go HealthCheck(f.p, f.healthCheckInterval)
-	wg.Wait()
+func (f *Freighter) ListenAndServe(wg *sync.WaitGroup) {
+	defer wg.Done()
+	go HealthCheck(f.pl, f.healthCheckInterval)
+	http.ListenAndServe(f.URL.Host, http.HandlerFunc(f.Handle))
+}
+
+func (f *Freighter) Handle(w http.ResponseWriter, r *http.Request) {
+	if backend := f.Strategy.Handle(r, f.pl); backend != nil {
+		backend.ReverseProxy.ServeHTTP(w, r)
+	} else {
+		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+	}
 }
 
 func NewFreighter(opts *Options) *Freighter {
-	p := &pool.ServerPool{
+	pl := &pool.ServerPool{
 		Backends: opts.Backends,
 	}
 
-	b := &balancer.Balancer{
-		URL:      opts.URL,
-		Pool:     p,
-		Strategy: opts.Strategy,
-	}
-
 	return &Freighter{
-		p:                   p,
-		b:                   b,
+		URL:                 opts.URL,
+		Strategy:            opts.Strategy,
+		pl:                  pl,
 		healthCheckInterval: opts.HealthCheckInterval,
 	}
 }
