@@ -36,5 +36,18 @@ export default defineConfig({
     socialLinks: [
       { icon: 'github', link: 'https://github.com/ShardulNalegave/freighter' }
     ]
-  }
+  },
+  head: [
+    [
+      'script',
+      {
+        src: 'https://www.googletagmanager.com/gtag/js?id=G-JCJH9KGFWV',
+      },
+    ],
+    [
+      'script',
+      {},
+      "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-JCJH9KGFWV');",
+    ],
+  ],
 })
