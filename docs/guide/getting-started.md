@@ -20,10 +20,15 @@ The `Freighter` struct handles almost all of the required work. You can create a
 ```go
 srv := freighter.NewFreighter(&freighter.Options{
   URL: &url.URL{
-    Host: ":5000"
+    Host: ":5000",
   },
-  Strategy: &strategy.RoundRobin{},
-  Backends: []*pool.Backend{},
+  EnableConsoleLogging: true,
+  HealthCheckInterval:  time.Second * 5,
+  Strategy:             &strategy.RoundRobin{},
+  Backends: []*pool.Backend{
+    pool.NewBackend(&url.URL{Host: ":8080", Scheme: "http"}, nil),
+    pool.NewBackend(&url.URL{Host: ":8081", Scheme: "http"}, nil),
+  },
 })
 ```
 

@@ -3,7 +3,6 @@ package freighter
 import (
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 
 	"github.com/ShardulNalegave/freighter/analytics"
@@ -14,10 +13,11 @@ import (
 )
 
 type Options struct {
-	URL                 *url.URL
-	Strategy            strategy.Strategy
-	Backends            []*pool.Backend
-	HealthCheckInterval time.Duration
+	URL                  *url.URL
+	Strategy             strategy.Strategy
+	Backends             []*pool.Backend
+	HealthCheckInterval  time.Duration
+	EnableConsoleLogging bool
 }
 
 type Freighter struct {
@@ -29,36 +29,41 @@ type Freighter struct {
 	healthCheckInterval time.Duration
 }
 
-func (f *Freighter) ListenAndServe(wg *sync.WaitGroup) {
-	defer wg.Done()
+func (f *Freighter) ListenAndServe() {
 	go HealthCheck(f.pl, f.healthCheckInterval)
-
 	f.logger.Info().Str("HOST", f.URL.Host).Msg("Listening...")
 	http.ListenAndServe(f.URL.Host, http.HandlerFunc(f.Handle))
 }
 
 func (f *Freighter) Handle(w http.ResponseWriter, r *http.Request) {
 	if backend := f.Strategy.Handle(r, f.pl); backend != nil {
+		f.logger.Info().
+			Str("Backend.ID", backend.ID).
+			Str("Request.RemoteAddr", r.RemoteAddr).
+			Str("Request.Method", r.Method).
+			Str("Request.URI", r.URL.RequestURI()).
+			Msg("Forwarding an incoming request")
 		backend.ReverseProxy.ServeHTTP(w, r)
 	} else {
+		f.logger.Error().
+			Str("Request.RemoteAddr", r.RemoteAddr).
+			Str("Request.Method", r.Method).
+			Str("Request.URI", r.URL.RequestURI()).
+			Msg("No backend returned by set strategy")
 		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
 	}
 }
 
 func NewFreighter(opts *Options) *Freighter {
 	a := analytics.NewAnalytics()
-	logger := utils.NewLogger(a)
-
-	pl := &pool.ServerPool{
-		Backends: opts.Backends,
-	}
+	logger := utils.NewLogger(a, opts.EnableConsoleLogging)
 
 	return &Freighter{
 		URL:                 opts.URL,
 		Strategy:            opts.Strategy,
 		a:                   a,
 		logger:              logger,
-		pl:                  pl,
+		pl:                  pool.NewServerPool(opts.Backends, &logger),
 		healthCheckInterval: opts.HealthCheckInterval,
 	}
 }

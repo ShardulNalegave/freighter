@@ -13,7 +13,6 @@ const (
 
 type Analytics struct {
 	LogFile *os.File
-	Backend map[string]BackendAnalytics
 }
 
 func NewAnalytics() *Analytics {
@@ -31,6 +30,5 @@ func NewAnalytics() *Analytics {
 
 	return &Analytics{
 		LogFile: logFile,
-		Backend: make(map[string]BackendAnalytics),
 	}
 }

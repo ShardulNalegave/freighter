@@ -4,7 +4,7 @@ A Freighter strategy is any struct that implements the `Strategy` interface. Thi
 
 ```go
 type Strategy interface {
-	Handle(w http.ResponseWriter, r *http.Request, p *pool.ServerPool)
+	Handle(r *http.Request, p *pool.ServerPool) *pool.Backend
 }
 ```
 
@@ -22,25 +22,30 @@ Now create `main.go` and add following code to it.
 package main
 
 import (
-  "github.com/ShardulNalegave/freighter"
-  "github.com/ShardulNalegave/freighter/pool"
+	"net/url"
+	"time"
+
+	"github.com/ShardulNalegave/freighter"
+	"github.com/ShardulNalegave/freighter/pool"
 )
 
 func main() {
-  srv := freighter.NewFreighter(&freighter.Options{
-    URL: &url.URL{
-      Host: ":5000"
-    },
-    Backends: []*pool.Backend{
-      pool.NewBackend(&url.URL{ Host: ":8080" }, nil),
-      pool.NewBackend(&url.URL{ Host: ":8081" }, nil),
-      pool.NewBackend(&url.URL{ Host: ":8082" }, nil),
-    },
-    // TODO: Add our new Strategy
-  })
+	srv := freighter.NewFreighter(&freighter.Options{
+		URL: &url.URL{
+			Host: ":5000",
+		},
+		EnableConsoleLogging: true,
+		HealthCheckInterval:  time.Second * 5,
+		Backends: []*pool.Backend{
+			pool.NewBackend(&url.URL{Host: ":8080", Scheme: "http"}, nil),
+			pool.NewBackend(&url.URL{Host: ":8081", Scheme: "http"}, nil),
+		},
+    // TODO: Add our new strategy
+	})
 
-  srv.ListenAndServe()
+	srv.ListenAndServe()
 }
+
 ```
 
 Now, all thats let is to implement our strategy.
@@ -53,20 +58,30 @@ type MyStrategy struct{
 Taking a look at the `Strategy` interface, we see that `Handle` method should be defined on `MyStrategy`
 ```go
 import (
-  "net/http"
-  "sync/atomic"
+	"net/http"
+	"sync/atomic"
 
-  "github.com/ShardulNalegave/freighter/pool"
+	"github.com/ShardulNalegave/freighter/pool"
 )
 
-func (s *MyStrategy) Handle(w http.ResponseWriter, r *http.Request, p *pool.ServerPool) {
-  b := p.Backends[s.current]
-  b.ReverseProxy.ServeHTTP(w, r)
+func (s *MyStrategy) Handle(r *http.Request, p *pool.ServerPool) *pool.Backend {
+	next := s.increment(p)
+	l := len(p.Backends) + int(s.current)
+	for i := next; i < l; i++ {
+		index := int(i) % len(p.Backends)
+		if p.Backends[index].IsAlive() {
+			if i != next {
+				atomic.StoreUint64(&s.current, uint64(index))
+			}
+			return p.Backends[index]
+		}
+	}
 
-  atomic.AddUint64(&s.current, uint64(1))
-  if int(s.current) == len(p.Backends) {
-    atomic.StoreUint64(&s.current, uint64(0))
-  }
+	return nil
+}
+
+func (s *MyStrategy) increment(p *pool.ServerPool) int {
+	return int(atomic.AddUint64(&s.current, uint64(1)) % uint64(len(p.Backends)))
 }
 ```
 
@@ -84,41 +99,51 @@ Finally, pass our new strategy to the Freighter instance.
 package main
 
 import (
-  "net/url"
-  "net/http"
-  "sync/atomic"
+	"net/url"
+	"time"
 
-  "github.com/ShardulNalegave/freighter"
-  "github.com/ShardulNalegave/freighter/pool"
+	"github.com/ShardulNalegave/freighter"
+	"github.com/ShardulNalegave/freighter/pool"
 )
 
 func main() {
-  srv := freighter.NewFreighter(&freighter.Options{
-    URL: &url.URL{
-      Host: ":5000"
-    },
-    Backends: []*pool.Backend{
-      pool.NewBackend(&url.URL{ Host: ":8080" }, nil),
-      pool.NewBackend(&url.URL{ Host: ":8081" }, nil),
-      pool.NewBackend(&url.URL{ Host: ":8082" }, nil),
-    },
-    Strategy: &MyStrategy{},
-  })
+	srv := freighter.NewFreighter(&freighter.Options{
+		URL: &url.URL{
+			Host: ":5000",
+		},
+		EnableConsoleLogging: true,
+		HealthCheckInterval:  time.Second * 5,
+		Strategy:             &MyStrategy{}, // Our new strategy
+		Backends: []*pool.Backend{
+			pool.NewBackend(&url.URL{Host: ":8080", Scheme: "http"}, nil),
+			pool.NewBackend(&url.URL{Host: ":8081", Scheme: "http"}, nil),
+		},
+	})
 
-  srv.ListenAndServe()
+	srv.ListenAndServe()
 }
 
 type MyStrategy struct{
   current uint64
 }
 
-func (s *MyStrategy) Handle(w http.ResponseWriter, r *http.Request, p *pool.ServerPool) {
-  b := p.Backends[s.current]
-  b.ReverseProxy.ServeHTTP(w, r)
+func (s *MyStrategy) Handle(r *http.Request, p *pool.ServerPool) *pool.Backend {
+	next := s.increment(p)
+	l := len(p.Backends) + int(s.current)
+	for i := next; i < l; i++ {
+		index := int(i) % len(p.Backends)
+		if p.Backends[index].IsAlive() {
+			if i != next {
+				atomic.StoreUint64(&s.current, uint64(index))
+			}
+			return p.Backends[index]
+		}
+	}
 
-  atomic.AddUint64(&s.current, uint64(1))
-  if int(s.current) == len(p.Backends) {
-    atomic.StoreUint64(&s.current, uint64(0))
-  }
+	return nil
+}
+
+func (s *MyStrategy) increment(p *pool.ServerPool) int {
+	return int(atomic.AddUint64(&s.current, uint64(1)) % uint64(len(p.Backends)))
 }
 ```

@@ -6,9 +6,10 @@ Backends are the servers for the load-balancer to balance.
 Freighter options asks for an array of the provided `Backend` struct. This struct contains information about your backend. It also tracks its state and periodically pings to check its health after Freighter starts listening.
 
 ```go
+// Backend is representation of an actual running backend.
 type Backend struct {
 	ID           string
-	Metadata     map[string]interface{}
+	Metadata     interface{} // Metadata to be set by user
 	URL          *url.URL
 	alive        bool
 	mutex        sync.RWMutex
@@ -20,15 +21,18 @@ To create a instance of this struct, use the provided `NewBackend` function.
 
 ```go
 b1 := pool.NewBackend(&url.URL{
-  Host: ":8080"
+  Host: ":8080",
+  Scheme: "http",
 }, nil)
 
 b2 := pool.NewBackend(&url.URL{
-  Host: ":8082"
+  Host: ":8082",
+  Scheme: "http",
 }, nil)
 
 b3 := pool.NewBackend(&url.URL{
-  Host: ":8083"
+  Host: ":8083",
+  Scheme: "http",
 }, nil)
 ```
 
@@ -43,7 +47,8 @@ type MyMetadata struct {
 }
 
 b := pool.NewBackend(&url.URL{
-  Host: ":8083"
+  Host: ":8083",
+  Scheme: "http",
 }, MyMetadata{
   MaxReqsInQueue: 100
 })

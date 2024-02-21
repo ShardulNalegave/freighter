@@ -36,16 +36,17 @@ func (b *Backend) SetAlive(alive bool) {
 }
 
 // Checks backend health and update alive status accordingly
-func (b *Backend) CheckHealth() {
+func (b *Backend) CheckHealth() bool {
 	timeout := 2 * time.Second
 	conn, err := net.DialTimeout("tcp", b.URL.Host, timeout)
 	if err != nil {
 		b.SetAlive(false)
-		return
+		return false
 	}
 
 	_ = conn.Close()
 	b.SetAlive(true)
+	return true
 }
 
 // Constructs a new backend instance
