@@ -7,8 +7,8 @@ import (
 )
 
 func HealthCheck(p *pool.ServerPool, interval time.Duration) {
-	t := time.NewTicker(interval)
-	for range t.C {
+	p.CheckHealth()
+	for range time.Tick(interval) {
 		p.CheckHealth()
 	}
 }

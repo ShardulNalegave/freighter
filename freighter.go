@@ -1,8 +1,10 @@
 package freighter
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/ShardulNalegave/freighter/analytics"
@@ -32,7 +34,10 @@ type Freighter struct {
 func (f *Freighter) ListenAndServe() {
 	go HealthCheck(f.pl, f.healthCheckInterval)
 	f.logger.Info().Str("HOST", f.URL.Host).Msg("Listening...")
-	http.ListenAndServe(f.URL.Host, http.HandlerFunc(f.Handle))
+	if err := http.ListenAndServe(f.URL.Host, http.HandlerFunc(f.Handle)); err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
 }
 
 func (f *Freighter) Handle(w http.ResponseWriter, r *http.Request) {

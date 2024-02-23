@@ -16,6 +16,6 @@ features:
     details: Freighter tries its best to avoid complexity and creates useful abstractions for the user.
   - title: Extensible
     details: Freighter is built while keeping extensibility in mind. It allows the user to extend and build on top of it very easily.
-  - title: Unopionated
+  - title: Unopinionated
     details: Freighter is basically just a Go library and you can use it the way you want to.
 ---

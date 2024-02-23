@@ -12,7 +12,7 @@ import (
 func main() {
 	srv := freighter.NewFreighter(&freighter.Options{
 		URL: &url.URL{
-			Host: ":5000",
+			Host: ":8083",
 		},
 		EnableConsoleLogging: true,
 		HealthCheckInterval:  time.Second * 5,

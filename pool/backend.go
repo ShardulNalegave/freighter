@@ -57,7 +57,7 @@ func NewBackend(URL *url.URL, meta interface{}) *Backend {
 		Metadata:     meta,
 		URL:          URL,
 		ReverseProxy: rp,
-		alive:        true,
+		alive:        false,
 		mutex:        sync.RWMutex{},
 	}
 }
